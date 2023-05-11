@@ -1,20 +1,27 @@
 #!/usr/bin/env python3
 
+import pyautogui
 import socket
+
 host = '127.0.0.1'
 port = 1234
 
-ClientSocket = socket.socket()
+clientSocket = socket.socket()
 print('Waiting for connection')
 
 try:
-    ClientSocket.connect((host, port))
+    clientSocket.connect((host, port))
 except socket.error as e:
     print(str(e))
 
+response = clientSocket.recv(2048)
+print(response.decode('utf-8'))
+
 while True:
-    Input = input('PLAY, EXIT: ')
-    ClientSocket.send(str.encode(Input))
-    Response = ClientSocket.recv(2048)
-    print(Response.decode('utf-8'))
-ClientSocket.close()
+    command = input('PLAY, EXIT: ')
+    clientSocket.send(str.encode(command))
+    response = clientSocket.recv(2048)
+    if response.decode('utf-8') == 'Playing!' or response.decode('utf-8') == 'Paused!':
+        pyautogui.press('playpause')
+    print(response.decode('utf-8'))
+clientSocket.close()
