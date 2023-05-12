@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
 
 import socket
-from _thread import *
+import threading
 
 HOST = '127.0.0.1'
 PORT = 1234
 
+global status
+status = ''
 global clients
 clients = []
 
 def client_handler(connection):
     clients.append(connection)
-    status = ''
-    connection.send(str.encode('Connected! Type EXIT to stop\n'))
+    global status
+    connection.send(str.encode('Connected! Type EXIT to stop\nPLAY, EXIT: '))
     while True:
         data = connection.recv(2048)
         message = data.decode('utf-8').upper()
@@ -25,7 +27,7 @@ def client_handler(connection):
     clients.remove(connection)
     connection.close()
 
-# Thinking of changing the broadcast strategy to some sort of communication between Threads
+#TODO Thinking of changing the broadcast strategy to some sort of communication between Threads
 def command_broadcast(command, status):
     if command == 'PLAY':
         if status != 'playing':
@@ -40,7 +42,7 @@ def command_broadcast(command, status):
 def accept_connections(ServerSocket):
     Client, address = ServerSocket.accept()
     print('Connected to: ' + address[0] + ':' + str(address[1]))
-    start_new_thread(client_handler, (Client, ))
+    threading.Thread(target=client_handler, args=(Client, )).start()
     return Client
 
 def start_server(HOST, PORT):
