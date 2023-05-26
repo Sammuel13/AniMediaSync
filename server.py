@@ -2,17 +2,18 @@
 
 import socket
 import threading
+from QoL import hostSetup
 
-HOST = '127.0.0.1'
-PORT = 1234
+lock = threading.Lock()
 
-global status
+address, port = hostSetup('SERVER')
+
 status = ''
-global clients
 clients = []
 
 def client_handler(connection):
-    clients.append(connection)
+    with lock:
+        clients.append(connection)
     global status
     connection.send(str.encode('Connected! Type EXIT to stop\nPLAY, EXIT: '))
     while True:
@@ -24,7 +25,8 @@ def client_handler(connection):
         if message == 'EXIT':
             connection.sendall(str.encode('Bye...'))
             break
-    clients.remove(connection)
+    with lock:
+        clients.remove(connection)
     connection.close()
 
 #TODO Thinking of changing the broadcast strategy to some sort of communication between Threads
@@ -45,16 +47,16 @@ def accept_connections(ServerSocket):
     threading.Thread(target=client_handler, args=(Client, )).start()
     return Client
 
-def start_server(HOST, PORT):
+def start_server(address, port):
     ServerSocket = socket.socket()
     try:
-        ServerSocket.bind((HOST, PORT))
+        ServerSocket.bind((address, port))
     except socket.error as e:
         print(str(e))
-    print(f'Server is listening on the port {PORT}...')
+    print(f'Server is listening on the port {port}...')
     ServerSocket.listen()
 
     while True:
         accept_connections(ServerSocket)
 
-start_server(HOST, PORT)
+start_server(address, port)

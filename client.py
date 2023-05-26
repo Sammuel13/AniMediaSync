@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 
+#TODO gui with tkinter
 # import pyautogui
 import socket
 import threading
+
+from QoL import hostSetup
 
 # import os
 # os.environ["PATH"] = os.path.dirname(__file__) + os.pathsep + os.environ["PATH"]
@@ -12,33 +15,27 @@ import threading
 
 ################################################################
 
-from pynput.keyboard import Key, Listener, Controller
+from pynput.keyboard import Key, Listener, Controller, KeyCode
 keyboard = Controller()
+# code from https://pynput.readthedocs.io/en/latest/keyboard.html
 
-# def on_press(key):
-#     print('{0} pressed'.format(key))
+keypressed = ''
+def on_press(key):
+    global keypressed
+    try:
+        keypressed = key.char
+    except: keypressed = ''
 
+listener = Listener(on_press=on_press)
+listener.start()
 
-# def on_release(key):
-#     print('{0} release'.format(key))
-#     if key == Key.esc:
-#         return False
-
-# with Listener(on_press=on_press, on_release=on_release) as listener:
-#     listener.join()
-
-################################################################
-
-
-#TODO https://docs.python.org/3/library/configparser.html
-host = '127.0.0.1'
-port = 1234
+address, port = hostSetup('CLIENT')
 
 clientSocket = socket.socket()
 print('Waiting for connection')
 
 try:
-    clientSocket.connect((host, port))
+    clientSocket.connect((address, port))
 except socket.error as e:
     print(str(e))
 
