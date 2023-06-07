@@ -3,17 +3,21 @@
 import socket
 import threading
 from QoL import hostSetup
+from ChainingHashTable import ChainingHashTable
 
 lock = threading.Lock()
 
 address, port = hostSetup('SERVER')
 
 status = ''
-clients = []
+clients = ChainingHashTable()
 
 def client_handler(connection):
     with lock:
-        clients.append(connection)
+        clientKey = str(connection.getpeername()[0] + ':' + str(connection.getpeername()[1]))
+        print(clientKey)
+
+        clients.put(clientKey, connection)
     global status
     connection.send(str.encode('Connected! Type EXIT to stop\nPLAY, EXIT: '))
     while True:
@@ -26,18 +30,17 @@ def client_handler(connection):
             connection.sendall(str.encode('Bye...'))
             break
     with lock:
-        clients.remove(connection)
+        clients.remove(clientKey)
     connection.close()
 
-#TODO Thinking of changing the broadcast strategy to some sort of communication between Threads
 def command_broadcast(command, status):
     if command == 'PLAY':
         if status != 'playing':
-            for connection in clients:
+            for connection in clients.values():
                 connection.sendall(str.encode('Playing!'))
             return 'playing'
         else:
-            for connection in clients:
+            for connection in clients.values():
                 connection.sendall(str.encode('Paused!'))
             return 'paused'
 

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 #TODO gui with tkinter
-# import pyautogui
 import socket
 import threading
 
@@ -17,8 +16,8 @@ from QoL import hostSetup
 
 from pynput.keyboard import Key, Listener, Controller, KeyCode
 keyboard = Controller()
-# code from https://pynput.readthedocs.io/en/latest/keyboard.html
 
+# code from https://pynput.readthedocs.io/en/latest/keyboard.html
 keypressed = ''
 def on_press(key):
     global keypressed
