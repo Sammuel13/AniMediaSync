@@ -52,7 +52,9 @@ class Lista:
         except:
             raise
 
-    def inserir(self, posicao, valor ):
+    def inserir(self, valor, posicao=None):
+        if not posicao: posicao = self.tamanho()
+        
         try:
             assert posicao > 0
             self.__dado.insert(posicao-1,valor)
@@ -121,24 +123,24 @@ class Lista:
         self.__dado.insert(videoto-1,auxiliar_node) # inserir()
 
 # TESTING ZONE
-teste = Lista()
-# [1, 2, 2, 3, 5, 4, 1, 6, 2, 7, 8]
-teste.inserir(1,1)
-teste.inserir(2,2)
-teste.inserir(3,2)
-teste.inserir(4,3)
-teste.inserir(5,5)  #TODO improved the inserir to not ask for a index
-teste.inserir(6,4)  #TODO insert more videos at once "youtube... .../video.mp4 youtube..."
-teste.inserir(7,1) 
-teste.inserir(8,6)
-teste.inserir(9,2)
-teste.inserir(10,7)
-teste.inserir(11,8)
-print(teste)
-teste.removeDupps()
-print(teste)
-teste.realocate(4,5)
-print(teste)
-teste.shuffle()
-print(teste)
-print(teste.next(),teste)
+# teste = Lista()
+# # [1, 2, 2, 3, 5, 4, 1, 6, 2, 7, 8]
+# teste.inserir(1,1)
+# teste.inserir(2,2)
+# teste.inserir(3,2)
+# teste.inserir(4,3)
+# teste.inserir(5,5)  #TODO improved the inserir to not ask for a index
+# teste.inserir(6,4)  #TODO insert more videos at once "youtube... .../video.mp4 youtube..."
+# teste.inserir(7,1) 
+# teste.inserir(8,6)
+# teste.inserir(9,2)
+# teste.inserir(10,7)
+# teste.inserir(11,8)
+# print(teste)
+# teste.removeDupps()
+# print(teste)
+# teste.realocate(4,5)
+# print(teste)
+# teste.shuffle()
+# print(teste)
+# print(teste.next(),teste)
