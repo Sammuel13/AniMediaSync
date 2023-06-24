@@ -53,7 +53,7 @@ class Lista:
             raise
 
     def inserir(self, valor, posicao=None):
-        if not posicao: posicao = self.tamanho()
+        if not posicao: posicao = self.tamanho() + 1
         
         try:
             assert posicao > 0
@@ -92,6 +92,9 @@ class Lista:
         return self.__dado.__str__()
 
     # new methods
+    def iterable(self):
+        return self.__dado
+
     def clear(self):
         if len(self.__dado)==0: # estaVazia()
             raise

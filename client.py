@@ -3,14 +3,13 @@
 #TODO gui with tkinter
 import socket
 import threading
+import time as clock
 
 from QoL import hostSetup
 
-# import os
-# os.environ["PATH"] = os.path.dirname(__file__) + os.pathsep + os.environ["PATH"]
-# import mpv
+import vlc
 
-# player = mpv.MPV()
+player = vlc.MediaPlayer()
 
 ################################################################
 
@@ -31,7 +30,7 @@ listener.start()
 address, port = hostSetup('CLIENT')
 
 clientSocket = socket.socket()
-print('Waiting for connection')
+print('Waiting for connection.')
 
 try:
     clientSocket.connect((address, port))
@@ -44,17 +43,51 @@ print(response.decode('utf-8'))
 def server_listener():
     while True:
         response = clientSocket.recv(2048)
-        if response.decode('utf-8') == 'Playing!' or response.decode('utf-8') == 'Paused!':
-            keyboard.press(Key.media_play_pause)
-        elif response.decode('utf-8') == 'Bye...': break
-        print(response.decode('utf-8'))
+        response = response.decode('utf-8').split()
+        
+        if not response:
+            break
+        if response[0] == 'PLAY':
+            media = vlc.Media(response[1])
+            player.set_media(media)
+            player.play()
+            print(f'"{response[1]}" is ready to play.')
+            player.set_pause(1)
+
+        elif response[0] == 'MSG':
+            print(" ".join(response[1:]))
+
+            if response[1] == 'Playing!':
+                # keyboard.press(Key.media_play_pause)
+                player.play()
+                player.set_pause(0)
+
+            elif response[1] == 'Paused!':
+                player.set_pause(1)
+
+        elif response[0] == 'SEEK':
+            seek = int(response[1])/100
+            player.set_position(seek)
+
         print('PLAY, EXIT: ')
 
+def update_time():
+    while True:
+        try:
+            clock.sleep(1)
+            time = player.get_time()
+            duration = player.get_length()
+            message = 'UPT' + ' ' + str(time) + ' ' + str(duration)
+            clientSocket.send(str.encode(message))
+        except: break
+
 threading.Thread(target=server_listener).start()
+threading.Thread(target=update_time).start()
 
 while True:
-    command = input() #TODO change to key listener
+    
+    command = input()
     clientSocket.send(str.encode(command))
-    if command.upper() == 'EXIT': break
-
-clientSocket.close()
+    if command.upper() == 'EXIT':
+        input('Connection closed.')
+        break
