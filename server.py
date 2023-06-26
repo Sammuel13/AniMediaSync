@@ -13,19 +13,20 @@ address, port = hostSetup('SERVER')
 status = 0
 clients = ChainingHashTable()
 playlist = Lista()
-time = duration = -1
+time = duration = 0
 
 def playlist_loader():
     global playlist
     global time
     global duration
     while True:
-        while playlist.estaVazia(): pass
+        while playlist.estaVazia() and (int(time) < int(duration)-1 or duration == 0): pass
         with lock:    
             media = playlist.elemento(1)
+        print('proximo!')
         for connection in clients.values():
             connection.sendall(str.encode('PLAY ' + media))
-        while int(time) < int(duration)-300 and duration != -1: pass
+        while int(time) < int(duration)-1 or duration == 0: pass
         with lock:
             playlist.next()
 
@@ -42,14 +43,15 @@ def client_handler(connection):
         data = connection.recv(2048)
         message = data.decode('utf-8').split()
 
-        print(time,duration)
+        print(time, duration)
 
         if message[0] == 'UPT':
             with lock:
                 try:
-                    time = int(message[1])
-                    duration = int(message[2])
-                except: pass
+                    time = float(message[1])
+                    duration = float(message[2])
+                except:
+                    time = duration = 0
         elif message[0].upper() == 'EXIT': break
         else:
             command_handler(message, status)

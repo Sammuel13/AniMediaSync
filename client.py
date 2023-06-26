@@ -7,9 +7,9 @@ import time as clock
 
 from QoL import hostSetup
 
-import vlc
+from python_mpv_jsonipc import MPV
 
-player = vlc.MediaPlayer()
+mpv = MPV(ytdl=True)
 
 ################################################################
 
@@ -48,26 +48,23 @@ def server_listener():
         if not response:
             break
         if response[0] == 'PLAY':
-            media = vlc.Media(response[1])
-            player.set_media(media)
-            player.play()
-            print(f'"{response[1]}" is ready to play.')
-            player.set_pause(1)
+            mpv.play(response[1])
+            print(f'"{response[1]}" is now playing.')
+            mpv.command("set_property","pause", False)
 
         elif response[0] == 'MSG':
             print(" ".join(response[1:]))
 
             if response[1] == 'Playing!':
                 # keyboard.press(Key.media_play_pause)
-                player.play()
-                player.set_pause(0)
+                mpv.command("set_property","pause", False)
 
             elif response[1] == 'Paused!':
-                player.set_pause(1)
+                mpv.command("set_property","pause", True)
 
         elif response[0] == 'SEEK':
-            seek = int(response[1])/100
-            player.set_position(seek)
+            seek = response[1]
+            mpv.command("set_property", "playback-time", seek)
 
         print('PLAY, EXIT: ')
 
@@ -75,8 +72,8 @@ def update_time():
     while True:
         try:
             clock.sleep(1)
-            time = player.get_time()
-            duration = player.get_length()
+            time = mpv.command("get_property", "time-pos")
+            duration = mpv.command("get_property", "duration")
             message = 'UPT' + ' ' + str(time) + ' ' + str(duration)
             clientSocket.send(str.encode(message))
         except: break
@@ -91,3 +88,5 @@ while True:
     if command.upper() == 'EXIT':
         input('Connection closed.')
         break
+
+mpv.terminate()

@@ -1,4 +1,0 @@
-The newest VLC has a problem with youtube videos
-you'll need to replace the file in
-"C:\Program Files\VideoLAN\VLC\lua\playlist\youtube.luac"
-with the "youtube.luac" file from the current folder
