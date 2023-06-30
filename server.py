@@ -43,8 +43,6 @@ def client_handler(connection):
         data = connection.recv(2048)
         message = data.decode('utf-8').split()
 
-        print(time, duration)
-
         if message[0] == 'UPT':
             with lock:
                 try:
