@@ -49,8 +49,12 @@ def server_listener():
             break
         if response[0] == 'PLAY':
             mpv.play(response[1])
+            mpv.command("set_property","pause", True)
+            clock.sleep(.5)
             print(f'"{response[1]}" is now playing.')
             mpv.command("set_property","pause", False)
+            mpv.command("set_property", "playback-time", 0)
+
 
         elif response[0] == 'MSG':
             print(" ".join(response[1:]))
@@ -71,7 +75,7 @@ def server_listener():
 def update_time():
     while True:
         try:
-            clock.sleep(1)
+            clock.sleep(.2)
             time = mpv.command("get_property", "time-pos")
             duration = mpv.command("get_property", "duration")
             message = 'UPT' + ' ' + str(time) + ' ' + str(duration)
