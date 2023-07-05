@@ -1,96 +1,109 @@
-#!/usr/bin/env python3
-
-#TODO gui with tkinter
 import socket
 import threading
 import time as clock
-
 from QoL import hostSetup
-
 from python_mpv_jsonipc import MPV
 
-mpv = MPV(ytdl=True)
+class Client:
+    def __init__(self, address, port):
+        self.address = address
+        self.port = port
+        self.clientSocket = socket.socket()
+        self.mpv = MPV(ytdl=True)
+        self.dictionary = {}
 
-################################################################
+    def connect(self):
+        print('Waiting for connection...')
+        self.clientSocket.connect((self.address, self.port))
+        print('Connected!')
+        print('\nCommand: ')
 
-from pynput.keyboard import Key, Listener, Controller, KeyCode
-keyboard = Controller()
+    def receive_response(self):
+        while True:
+            response = self.clientSocket.recv(2048)
+            
+            if not response:
+                break
 
-# code from https://pynput.readthedocs.io/en/latest/keyboard.html
-keypressed = ''
-def on_press(key):
-    global keypressed
-    try:
-        keypressed = key.char
-    except: keypressed = ''
+            response = response.decode('utf-8').split(' ')
 
-listener = Listener(on_press=on_press)
-listener.start()
+            if response[0] == 'PLAY':
+                self.mpv.play(response[1])
+                self.mpv.command("set_property", "pause", True)
+                clock.sleep(.5)
+                print(f'"{response[1]}" is now playing.')
+                self.mpv.command("set_property", "pause", False)
+                self.mpv.command("set_property", "playback-time", 0)
 
-address, port = hostSetup('CLIENT')
+            elif response[0] == 'MSG':
+                print(self.dictionary[response[1]])
 
-clientSocket = socket.socket()
-print('Waiting for connection.')
+                if response[1] == 'PLAYING':
+                    self.mpv.command("set_property", "pause", False)
 
-try:
-    clientSocket.connect((address, port))
-except socket.error as e:
-    print(str(e))
+                elif response[1] == 'PAUSED':
+                    self.mpv.command("set_property", "pause", True)
+            
+            elif response[0] == 'SEEK':
+                seek = response[1]
+                print(seek)
+                self.mpv.command("set_property", "playback-time", seek)
 
-response = clientSocket.recv(2048)
-print(response.decode('utf-8'))
+            elif response[0] == 'PLAYLIST':
+                response[0] = self.dictionary[response[0]] + '\n'
+                print(' '.join(response))
 
-def server_listener():
-    while True:
-        response = clientSocket.recv(2048)
-        response = response.decode('utf-8').split()
-        
-        if not response:
-            break
-        if response[0] == 'PLAY':
-            mpv.play(response[1])
-            mpv.command("set_property","pause", True)
-            clock.sleep(.5)
-            print(f'"{response[1]}" is now playing.')
-            mpv.command("set_property","pause", False)
-            mpv.command("set_property", "playback-time", 0)
+            elif response[0] == 'ERROR':
+                print(self.dictionary[response[1]])
 
+            print('\nCommand: ')
 
-        elif response[0] == 'MSG':
-            print(" ".join(response[1:]))
+    def update_time(self):
+        while True:
+            try:
+                clock.sleep(.2)
+                time = self.mpv.command("get_property", "time-pos")
+                percent = self.mpv.command("get_property", "percent-pos")
+                duration = self.mpv.command("get_property", "duration")
+                message = 'UPT' + ' ' + str(time) + ' ' + str(percent) + ' ' + str(duration)
+                self.clientSocket.send(str.encode(message))
+            except:
+                break
 
-            if response[1] == 'Playing!':
-                # keyboard.press(Key.media_play_pause)
-                mpv.command("set_property","pause", False)
+    def set_dictionary(self):
+        #TODO add support for different languages
+        self.dictionary = {
+            "PLAYING": "Playing!",
+            "PAUSED": "Paused!",
+            "PLAYLIST": "Playlist:",
+            "EMPTY_PLAYLIST": "Playlist does not have more videos.",
+            "ERROR 101": "Command with wrong or insufficient arguments.",
+        }
 
-            elif response[1] == 'Paused!':
-                mpv.command("set_property","pause", True)
-
-        elif response[0] == 'SEEK':
-            seek = response[1]
-            mpv.command("set_property", "playback-time", seek)
-
-        print('PLAY, EXIT: ')
-
-def update_time():
-    while True:
+    def start(self):
+        self.set_dictionary()
         try:
-            clock.sleep(.2)
-            time = mpv.command("get_property", "time-pos")
-            duration = mpv.command("get_property", "duration")
-            message = 'UPT' + ' ' + str(time) + ' ' + str(duration)
-            clientSocket.send(str.encode(message))
-        except: break
+            self.connect()
+        except:
+            input('The server could not be contacted.')
+            self.mpv.terminate()
+            exit(0)
+            
+        response = self.clientSocket.recv(2048)
 
-threading.Thread(target=server_listener).start()
-threading.Thread(target=update_time).start()
+        threading.Thread(target=self.receive_response).start()
+        threading.Thread(target=self.update_time).start()
 
-while True:
-    
-    command = input()
-    clientSocket.send(str.encode(command))
-    if command.upper() == 'EXIT':
-        input('Connection closed.')
-        break
+        while True:
+            command = input()
+            self.clientSocket.send(str.encode(command))
+            if command.upper() == 'EXIT':
+                input('Connection closed.')
+                break
 
-mpv.terminate()
+        self.mpv.terminate()
+
+# Usage:
+address, port = hostSetup('CLIENT')
+client = Client(address, port)
+client.start()
