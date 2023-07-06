@@ -16,24 +16,23 @@ class Server:
         self.parties = ChainingHashTable()
 
     def playlist_loader(self):
-        while True:
-            if len(self.parties) == 0:
-                break
+        while len(self.parties) != 0:
             for party in self.parties.values():
-                party_members = party.get_members()
                 while party.playlist.is_empty(): sleep(1)
                 with self.lock:
                     party.video_url = party.playlist.get_current_media()
-                    # party.video_is_playing = True
+                #     party.video_is_playing = True
+                sleep(3)
+                party_members = party.get_members()
                 for connection in party_members:
                     connection.sendall(str.encode('PLAY ' + party.video_url))
-                while party.video_position < 98: sleep(1)
+                while party.video_position < 96: sleep(1)
                 with self.lock:
                     # party.video_is_playing = False
                     party.playlist.get_next_media()
 
     def set_party(self, connection):
-        connection.sendall(str.encode('PARTY_SETUP'))
+        connection.sendall(str.encode('MSG PARTY_SETUP'))
         setup = ['']
         while setup[0] not in ['CREATE', 'JOIN']:
             data = connection.recv(2048)
@@ -63,12 +62,13 @@ class Server:
         party = self.set_party(connection)
 
         with self.lock:
-            if len(self.parties) == 1:
-                threading.Thread(target=self.playlist_loader, args=()).start()
-
             clientKey = str(connection.getpeername()[0] + ':' + str(connection.getpeername()[1]))
             party.add_member(clientKey, connection)
             self.clients.put(clientKey, connection)
+
+            if len(self.parties) == 1 and party.get_member_count() == 1:
+                threading.Thread(target=self.playlist_loader, args=()).start()
+
         connection.send(str.encode('MSG CONNECTED'))
         while True:
             data = connection.recv(2048)
@@ -135,9 +135,9 @@ class Server:
                         response = 'MSG EMPTY_PLAYLIST'
                     else:
                         with self.lock:
-                            party.video_url = party.playlist.next()
-                            response = 'PLAY ' + party.video_url
+                            party.video_url = party.playlist.get_next_media()
                             # party.video_is_playing = True
+                        response = 'PLAY ' + party.video_url
                     for connection in party_members:
                         connection.sendall(str.encode(response))
                 elif args[0].upper() == 'ADD':
