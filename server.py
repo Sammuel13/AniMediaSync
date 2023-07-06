@@ -119,6 +119,8 @@ class Server:
                         connection.sendall(str.encode('MSG PAUSED'))
 
             elif command == 'SEEK':
+                if int(args[0]) > party.video_duration:                  # No caso do valor do seek for maior que o do vídeo
+                    raise Exception                                      # A ação é impossível e um erro 101 é retornado
                 with self.lock:
                     for connection in party_members:
                         connection.sendall(str.encode('SEEK ' + args[0]))
