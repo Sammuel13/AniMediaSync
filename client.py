@@ -50,7 +50,6 @@ class Client:
             
             elif response[0] == 'SEEK':
                 seek = response[1]
-                print(seek)
                 self.mpv.command("set_property", "playback-time", seek)
 
             elif response[0] == 'PLAYLIST':
@@ -77,12 +76,15 @@ class Client:
     def set_dictionary(self):
         #TODO add support for different languages
         self.dictionary = {
-            "CONNECTED": "Connected!",
+            "CONNECTED": "Joined!",
             "PLAYING": "Playing!",
             "PAUSED": "Paused!",
             "PLAYLIST": "Playlist:",
             "EMPTY_PLAYLIST": "Playlist does not have more videos.",
-            "ERROR 101": "Command with wrong or insufficient arguments.",
+            "101": "Command with wrong or insufficient arguments.",
+            "102": "Party already exists.",
+            "103": "Party does not exist.",
+            "104": "Invalid command.",
         }
 
     def start(self):

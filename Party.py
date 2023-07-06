@@ -3,22 +3,18 @@ from Playlist import Playlist
 from Video import Video
 
 class Party:
-    def __init__(self, size=10):
-        self._name = ""
+    def __init__(self, name, size=10):
+        self._name = name
         self._size = size
         self._member_count = 0
         self.members = ChainingHashTable(size*4)
         self._video = Video()
         self._playlist = Playlist()
-        self._status = self._video.is_playing
+        self._status = False
 
     @property
     def name(self):
         return self._name
-
-    @name.setter
-    def name(self, name):
-        self._name = name
 
     @property
     def video_url(self):
@@ -55,6 +51,14 @@ class Party:
     @property
     def playlist(self):
         return self._playlist
+    
+    @property
+    def video_is_playing(self):
+        return self._video.is_playing
+
+    @video_is_playing.setter
+    def video_is_playing(self, is_playing):
+        self.video_is_playing = is_playing
 
     def add_member(self, memberKey, member):
         self.members.put(memberKey, member)

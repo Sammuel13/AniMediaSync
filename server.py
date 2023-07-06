@@ -3,8 +3,8 @@ import threading
 from time import sleep
 from QoL import hostSetup
 from ChainingHashTable import ChainingHashTable
-from Playlist import Playlist
-from Video import Video
+# from Playlist import Playlist
+# from Video import Video
 from Party import Party
 
 class Server:
@@ -15,47 +15,57 @@ class Server:
         self.clients = ChainingHashTable()
         self.parties = ChainingHashTable()
 
-    def playlist_loader(self, party):
-        try:
-            party_members = party.get_members()
-
-            while True:
+    def playlist_loader(self):
+        while True:
+            if len(self.parties) == 0:
+                break
+            for party in self.parties.values():
+                party_members = party.get_members()
                 while party.playlist.is_empty(): sleep(1)
                 with self.lock:
-                    party.video.url = party.playlist.get_current_media()
-                    party.video.is_playing = True
+                    party.video_url = party.playlist.get_current_media()
+                    # party.video_is_playing = True
                 for connection in party_members:
-                    connection.sendall(str.encode('PLAY ' + party.video.url))
-                while party.video.progress < 98: sleep(1)
+                    connection.sendall(str.encode('PLAY ' + party.video_url))
+                while party.video_position < 98: sleep(1)
                 with self.lock:
-                    party.video.is_playing = False
+                    # party.video_is_playing = False
                     party.playlist.get_next_media()
-        except:
-            pass # empty party
 
-    def set_party(self, setup):
+    def set_party(self, connection):
+        connection.sendall(str.encode('PARTY_SETUP'))
+        setup = ['']
+        while setup[0] not in ['CREATE', 'JOIN']:
+            data = connection.recv(2048)
+            setup = data.decode('utf-8').upper().split()
+
         if setup[0] == 'CREATE':
-            new_party = Party()
-            new_party.name = setup[1]
-            with self.lock:
-                self.parties.put(setup[1], Party())
+            try:
+                party = self.parties.get(' '.join(setup[1:]))
+                connection.sendall(str.encode('ERROR 102'))
+                party = self.set_party(connection)
+            except:
+                party = Party(' '.join(setup[1:]))
+                with self.lock:
+                    self.parties.put(' '.join(setup[1:]), party)
 
-        # elif setup[0] == 'JOIN':
+        elif setup[0] == 'JOIN':
+            try:
+                party = self.parties.get(' '.join(setup[1:]))
+            except:
+                connection.sendall(str.encode('ERROR 103'))
+                party = self.set_party(connection)
         
-        return self.parties.get(setup[1])
+        return party
 
     def client_handler(self, connection):
-        connection.sendall(str.encode('PARTY_SETUP'))
-        setup_message = ['']
-        while setup_message[0] not in ['CREATE', 'JOIN']:
-            data = connection.recv(2048)
-            setup_message = data.decode('utf-8').upper().split()
-            print(setup_message)
-        party = self.set_party(setup_message)
-        
-        threading.Thread(target=self.playlist_loader, args=(party,)).start()
+     
+        party = self.set_party(connection)
 
         with self.lock:
+            if len(self.parties) == 1:
+                threading.Thread(target=self.playlist_loader, args=()).start()
+
             clientKey = str(connection.getpeername()[0] + ':' + str(connection.getpeername()[1]))
             party.add_member(clientKey, connection)
             self.clients.put(clientKey, connection)
@@ -95,13 +105,13 @@ class Server:
         try:
             if command == 'PLAY':
                 with self.lock:
-                    party.video.is_playing = True
+                    # party.video_is_playing = True
                     for connection in party_members:
                         connection.sendall(str.encode('MSG PLAYING'))
 
             elif command == 'PAUSE':
                 with self.lock:
-                    party.video.is_playing = False
+                    # party.video_is_playing = False
                     for connection in party_members:
                         connection.sendall(str.encode('MSG PAUSED'))
 
@@ -112,28 +122,27 @@ class Server:
 
             elif command == 'PLAYLIST':
                 if not len(args):
-                    playlistStr = 'PLAYLIST '
-                    for i in party.playlist.get_all_media():
-                        playlistStr += i + '\n'
-                    for connection in party_members:
-                        connection.sendall(str.encode(playlistStr))
+                    if party.playlist.get_playlist_length() <= 1:
+                        response = 'MSG EMPTY_PLAYLIST'
+                    else:
+                        playlistStr = 'PLAYLIST '
+                        for i in party.playlist.get_all_media():
+                            playlistStr += i + '\n'
+                        for connection in party_members:
+                            connection.sendall(str.encode(playlistStr))
                 elif args[0].upper() == 'NEXT':
                     if party.playlist.get_playlist_length() <= 1:
                         response = 'MSG EMPTY_PLAYLIST'
                     else:
                         with self.lock:
-                            party.video.url = party.playlist.next()
-                            response = 'PLAY ' + party.video.url
-                            party.video.is_playing = True
+                            party.video_url = party.playlist.next()
+                            response = 'PLAY ' + party.video_url
+                            # party.video_is_playing = True
                     for connection in party_members:
                         connection.sendall(str.encode(response))
                 elif args[0].upper() == 'ADD':
-                    try:
-                        with self.lock:
-                            party.playlist.add_media(args[2], int(args[1]))
-                    except:
-                        with self.lock:
-                            party.playlist.add_media(args[1])
+                    with self.lock:
+                        party.playlist.add_media(' '.join(args[1:]))
                 elif args[0].upper() == 'REMOVE':
                     with self.lock:
                         party.playlist.remove_media(int(args[1]))
@@ -149,14 +158,19 @@ class Server:
                 elif args[0].upper() == 'REALOCATE':
                     with self.lock:
                         party.playlist.realocate_media(int(args[1]), int(args[2]))
-        except:
-            # error_message = f'Command "{command}" with wrong or insufficient arguments'
+        
+            else:
+                for connection in party_members:
+                    connection.sendall(str.encode('ERROR 104'))
+        except Exception as e:
+            print(e)
             for connection in party_members:
                 connection.sendall(str.encode('ERROR 101'))
 
     def accept_connections(self, server_socket):
         client, address = server_socket.accept()
         print('Connected to: ' + address[0] + ':' + str(address[1]))
+
         threading.Thread(target=self.client_handler, args=(client,)).start()
 
     def start_server(self):
