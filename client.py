@@ -27,6 +27,10 @@ class Client:
 
             response = response.decode('utf-8').split(' ')
 
+            if response[0] == 'PARTY_SETUP':
+                print('Create or enter on a party to proceed.')
+                # validations
+
             if response[0] == 'PLAY':
                 self.mpv.play(response[1])
                 self.mpv.command("set_property", "pause", True)
@@ -73,6 +77,7 @@ class Client:
     def set_dictionary(self):
         #TODO add support for different languages
         self.dictionary = {
+            "CONNECTED": "Connected!",
             "PLAYING": "Playing!",
             "PAUSED": "Paused!",
             "PLAYLIST": "Playlist:",
