@@ -16,7 +16,7 @@ class Client:
         print('Waiting for connection...')
         self.clientSocket.connect((self.address, self.port))
         print('Connected!')
-        print('\nCommand: ')
+        # print('\nCommand: ')
 
     def receive_response(self):
         while True:
@@ -43,13 +43,17 @@ class Client:
 
                 elif response[1] == 'PAUSED':
                     self.mpv.command("set_property", "pause", True)
+
+                elif response[1] == 'PARTY_SETUP':
+                    print('List of Parties:')
+                    print(' '.join(response[2:]))
             
             elif response[0] == 'SEEK':
                 seek = response[1]
                 self.mpv.command("set_property", "playback-time", seek)
 
             elif response[0] == 'PLAYLIST':
-                response[0] = self.dictionary[response[0]] + '\n'
+                print(self.dictionary[response.pop(0)])
                 print(' '.join(response))
 
             elif response[0] == 'ERROR':
@@ -72,7 +76,7 @@ class Client:
     def set_dictionary(self):
         #TODO add support for different languages
         self.dictionary = {
-            "CONNECTED": "Joined!",
+            "CONNECTED": "Joined the party!",
             "PARTY_SETUP": "Create or enter on a party to proceed.",
             "PLAYING": "Playing!",
             "PAUSED": "Paused!",
@@ -92,8 +96,6 @@ class Client:
             input('The server could not be contacted.')
             self.mpv.terminate()
             exit(0)
-            
-        response = self.clientSocket.recv(2048)
 
         threading.Thread(target=self.receive_response).start()
         threading.Thread(target=self.update_time).start()

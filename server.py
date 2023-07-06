@@ -32,7 +32,10 @@ class Server:
                     party.playlist.get_next_media()
 
     def set_party(self, connection):
-        connection.sendall(str.encode('MSG PARTY_SETUP'))
+        partiesStr = '| '
+        for i in self.parties.keys():
+            partiesStr += i + ' | '
+        connection.sendall(str.encode('MSG PARTY_SETUP ' + partiesStr))
         setup = ['']
         while setup[0] not in ['CREATE', 'JOIN']:
             data = connection.recv(2048)
@@ -120,16 +123,26 @@ class Server:
                     for connection in party_members:
                         connection.sendall(str.encode('SEEK ' + args[0]))
 
+            elif command == 'PARTY':
+                # if not len(args):
+                #     membersStr = '| '
+                #     for i in party_members:
+                #         membersStr += i + ' | '
+                if args[0].upper() == 'NAME':
+                    with self.lock:
+                        for connection in party_members:
+                            connection.sendall(str.encode('MSG ' + party.name))
+
             elif command == 'PLAYLIST':
                 if not len(args):
-                    if party.playlist.get_playlist_length() <= 1:
+                    if party.playlist.get_playlist_length() == 0:
                         response = 'MSG EMPTY_PLAYLIST'
                     else:
-                        playlistStr = 'PLAYLIST '
+                        response = 'PLAYLIST '
                         for i in party.playlist.get_all_media():
-                            playlistStr += i + '\n'
-                        for connection in party_members:
-                            connection.sendall(str.encode(playlistStr))
+                            response += i + '\n'
+                    for connection in party_members:
+                        connection.sendall(str.encode(response))
                 elif args[0].upper() == 'NEXT':
                     if party.playlist.get_playlist_length() <= 1:
                         response = 'MSG EMPTY_PLAYLIST'
